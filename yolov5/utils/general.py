@@ -982,8 +982,6 @@ def plot_wh_methods():  # from utils.utils import *; plot_wh_methods()
 def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max_size=640, max_subplots=16):
     tl = 3  # line thickness
     tf = max(tl - 1, 1)  # font thickness
-    if os.path.isfile(fname):  # do not overwrite
-        return None
 
     if isinstance(images, torch.Tensor):
         images = images.cpu().float().numpy()
@@ -1240,3 +1238,7 @@ def plot_results(start=0, stop=0, bucket='', id=(), labels=(),
     fig.tight_layout()
     ax[1].legend()
     fig.savefig(Path(save_dir) / 'results.png', dpi=200)
+
+def get_yolov5_folder():
+    filepath = Path(os.path.dirname(os.path.abspath(__file__))).parent
+    return filepath
