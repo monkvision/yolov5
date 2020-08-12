@@ -14,6 +14,7 @@ import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torchvision
@@ -53,7 +54,7 @@ def init_seeds(seed=0):
 
 def get_latest_run(search_dir='./runs'):
     # Return path to most recent 'last.pt' in /runs (i.e. to --resume from)
-    last_list = glob.glob(f'{search_dir}/**/last*.pt', recursive=True)
+    last_list = glob.glob(f'{search_dir}/**/last.pt', recursive=True)
     return max(last_list, key=os.path.getctime)
 
 
@@ -820,33 +821,35 @@ def kmean_anchors(path='./data/coco128.yaml', n=9, img_size=640, thr=4.0, gen=10
     return print_results(k)
 
 
-def print_mutation(hyp, results, yaml_file='hyp_evolved.yaml', bucket=''):
+def print_mutation(hyp, to_save, yaml_file='hyp_evolved.yaml', bucket='', csv_file = 'evolve.csv'):
     # Print mutation results to evolve.txt (for use with train.py --evolve)
-    a = '%10s' * len(hyp) % tuple(hyp.keys())  # hyperparam keys
-    b = '%10.3g' * len(hyp) % tuple(hyp.values())  # hyperparam values
-    c = '%10.4g' * len(results) % results  # results (P, R, mAP@0.5, mAP@0.5:0.95, val_losses x 3)
-    print('\n%s\n%s\nEvolved fitness: %s\n' % (a, b, c))
+    fitness_args = np.array([v[0] for k,v in to_save.items() if k != 'optimizer']).reshape(1, -1)
+    to_save['fitness'] = fitness(fitness_args)[0]
+    if os.path.exists(csv_file):
+        df = pd.read_csv(csv_file, index_col = 0)
+        to_append = pd.DataFrame.from_dict(to_save)
+        df = df.append(to_append)
+    else:
+        df = pd.DataFrame.from_dict(to_save)
 
     if bucket:
         os.system('gsutil cp gs://%s/evolve.txt .' % bucket)  # download evolve.txt
 
-    with open('evolve.txt', 'a') as f:  # append result
-        f.write(c + b + '\n')
-    x = np.unique(np.loadtxt('evolve.txt', ndmin=2), axis=0)  # load unique rows
-    x = x[np.argsort(-fitness(x))]  # sort
-    np.savetxt('evolve.txt', x, '%10.3g')  # save sort by fitness
-
+    best_run_id = np.argmax(df['fitness'].values) 
+    x = df.iloc[best_run_id]
     if bucket:
         os.system('gsutil cp evolve.txt gs://%s' % bucket)  # upload evolve.txt
 
     # Save yaml
     for i, k in enumerate(hyp.keys()):
-        hyp[k] = float(x[0, i + 7])
+        hyp[k] = x[k]
     with open(yaml_file, 'w') as f:
-        results = tuple(x[0, :7])
-        c = '%10.4g' * len(results) % results  # results (P, R, mAP@0.5, mAP@0.5:0.95, val_losses x 3)
+        results = x[['P', 'R', 'ap@0.5', 'mAP@0.5-0.95', 'Giou_loss', 'obj_loss', 'cls_loss']].values
+        c =  ' '.join([str(g) for g in results])  # results (P, R, mAP@0.5, mAP@0.5:0.95, val_losses x 3)
         f.write('# Hyperparameter Evolution Results\n# Generations: %g\n# Metrics: ' % len(x) + c + '\n\n')
         yaml.dump(hyp, f, sort_keys=False)
+    pd.DataFrame.to_csv(df, csv_file)
+
 
 
 def apply_classifier(x, model, img, im0):
