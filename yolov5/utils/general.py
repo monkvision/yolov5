@@ -845,7 +845,7 @@ def print_mutation(hyp, to_save, yaml_file='hyp_evolved.yaml', scp="", csv_file 
         yaml.dump(hyp, f, sort_keys=False)
     pd.DataFrame.to_csv(df, csv_file)
     if scp:
-        os.system(f'scp {csv_file} {scp}')
+        os.system(f'scp -i ~/.ssh/monk-team.pem {csv_file} {scp}')
 
 
 def apply_classifier(x, model, img, im0):
