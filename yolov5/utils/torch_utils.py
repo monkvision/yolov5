@@ -26,6 +26,8 @@ def select_device(device='', batch_size=None):
     # device = 'cpu' or '0' or '0,1,2,3'
     if device =='cuda:0':
         device = '0'
+    elif device =='cuda:0,1,2,3':
+        device = '0,1,2,3'
     cpu_request = device.lower() == 'cpu'
     if device and not cpu_request:  # if device requested other than 'cpu'
         os.environ['CUDA_VISIBLE_DEVICES'] = device  # set environment variable
