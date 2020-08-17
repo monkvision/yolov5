@@ -821,7 +821,7 @@ def kmean_anchors(path='./data/coco128.yaml', n=9, img_size=640, thr=4.0, gen=10
     return print_results(k)
 
 
-def print_mutation(hyp, to_save, yaml_file='hyp_evolved.yaml', bucket='', csv_file = 'evolve.csv'):
+def print_mutation(hyp, to_save, yaml_file='hyp_evolved.yaml', scp="", csv_file = 'evolve.csv'):
     # Print mutation results to evolve.txt (for use with train.py --evolve)
     fitness_args = np.array([v[0] for k,v in to_save.items() if k != 'optimizer']).reshape(1, -1)
     to_save['fitness'] = fitness(fitness_args)[0]
@@ -832,13 +832,8 @@ def print_mutation(hyp, to_save, yaml_file='hyp_evolved.yaml', bucket='', csv_fi
     else:
         df = pd.DataFrame.from_dict(to_save)
 
-    if bucket:
-        os.system('gsutil cp gs://%s/evolve.txt .' % bucket)  # download evolve.txt
-
     best_run_id = np.argmax(df['fitness'].values) 
     x = df.iloc[best_run_id]
-    if bucket:
-        os.system('gsutil cp evolve.txt gs://%s' % bucket)  # upload evolve.txt
 
     # Save yaml
     for i, k in enumerate(hyp.keys()):
@@ -849,7 +844,8 @@ def print_mutation(hyp, to_save, yaml_file='hyp_evolved.yaml', bucket='', csv_fi
         f.write('# Hyperparameter Evolution Results\n# Generations: %g\n# Metrics: ' % len(x) + c + '\n\n')
         yaml.dump(hyp, f, sort_keys=False)
     pd.DataFrame.to_csv(df, csv_file)
-
+    if scp:
+        os.system(f'scp {csv_file} {scp}')
 
 
 def apply_classifier(x, model, img, im0):
