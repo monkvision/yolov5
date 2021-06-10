@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
     name="yolov5",
     version="0.0.1",
-    packages=find_packages(),
+    packages=find_packages(exclude=("train",)),
     url="https://github.com/monkvision/monk",
     author="Ultralytics",
     install_requires=[
